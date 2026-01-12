@@ -31,10 +31,8 @@ export default function AdminTeacher() {
   const [showClassDropdown, setShowClassDropdown] = useState(false)
   const [formData, setFormData] = useState({
     teacherName: '',
-    sex: '',
     contact: '',
     selectedSubjects: [],
-    section: '',
     selectedClasses: []
   })
 
@@ -190,7 +188,7 @@ export default function AdminTeacher() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.teacherName || !formData.sex || !formData.contact || !formData.section) {
+    if (!formData.teacherName || !formData.contact) {
       setErrorMessage('Please fill in all required fields')
       setShowError(true)
       setTimeout(() => setShowError(false), 3000)
@@ -268,10 +266,8 @@ export default function AdminTeacher() {
     setEditingTeacher(teacherItem)
     setFormData({
       teacherName: teacherItem.teacherName,
-      sex: teacherItem.sex,
       contact: teacherItem.contact,
       selectedSubjects: teacherItem.selectedSubjects || [],
-      section: teacherItem.section,
       selectedClasses: teacherItem.selectedClasses || []
     })
     setShowModal(true)
@@ -323,10 +319,8 @@ export default function AdminTeacher() {
     setEditingTeacher(null)
     setFormData({
       teacherName: '',
-      sex: '',
       contact: '',
       selectedSubjects: [],
-      section: '',
       selectedClasses: []
     })
     setSubjectSearch('')
@@ -339,10 +333,8 @@ export default function AdminTeacher() {
     setEditingTeacher(null)
     setFormData({
       teacherName: '',
-      sex: '',
       contact: '',
       selectedSubjects: [],
-      section: '',
       selectedClasses: []
     })
     setSubjectSearch('')
@@ -397,9 +389,7 @@ export default function AdminTeacher() {
             <thead>
               <tr>
                 <th>Teacher Name</th>
-                <th>Sex</th>
                 <th>Contact</th>
-                <th>Section</th>
                 <th>Subjects</th>
                 <th>Classes</th>
                 <th>Actions</th>
@@ -409,13 +399,7 @@ export default function AdminTeacher() {
               {teachers.map((teacher) => (
                 <tr key={teacher.id}>
                   <td><strong>{teacher.teacherName}</strong></td>
-                  <td>
-                    <span className="badge badge-sex">{teacher.sex}</span>
-                  </td>
                   <td>{teacher.contact}</td>
-                  <td>
-                    <span className="badge badge-section">{teacher.section}</span>
-                  </td>
                   <td>
                     <div className="tags-container">
                       {teacher.selectedSubjects?.slice(0, 2).map(subjectId => (
@@ -492,34 +476,17 @@ export default function AdminTeacher() {
                 />
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="sex">Sex *</label>
-                  <select
-                    id="sex"
-                    name="sex"
-                    value={formData.sex}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Sex</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="contact">Contact *</label>
-                  <input
-                    type="text"
-                    id="contact"
-                    name="contact"
-                    value={formData.contact}
-                    onChange={handleInputChange}
-                    placeholder="Phone number or email"
-                    required
-                  />
-                </div>
+              <div className="form-group">
+                <label htmlFor="contact">Contact *</label>
+                <input
+                  type="text"
+                  id="contact"
+                  name="contact"
+                  value={formData.contact}
+                  onChange={handleInputChange}
+                  placeholder="Phone number or email"
+                  required
+                />
               </div>
 
               <div className="form-group">
@@ -576,22 +543,6 @@ export default function AdminTeacher() {
                     )}
                   </div>
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="section">Section *</label>
-                <select
-                  id="section"
-                  name="section"
-                  value={formData.section}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select Section</option>
-                  <option value="Commercial">Commercial</option>
-                  <option value="Grammar">Grammar</option>
-                  <option value="Technical">Technical</option>
-                </select>
               </div>
 
               <div className="form-group">
