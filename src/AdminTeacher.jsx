@@ -138,7 +138,7 @@ export default function AdminTeacher() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.teacherName || !formData.contact) {
+    if (!formData.teacherName) {
       setErrorMessage('Please fill in all required fields')
       setShowError(true)
       setTimeout(() => setShowError(false), 3000)
@@ -400,7 +400,7 @@ export default function AdminTeacher() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="contact">Contact *</label>
+                <label htmlFor="contact">Contact</label>
                 <input
                   type="text"
                   id="contact"
@@ -408,7 +408,6 @@ export default function AdminTeacher() {
                   value={formData.contact}
                   onChange={handleInputChange}
                   placeholder="Phone number or email"
-                  required
                 />
               </div>
 
