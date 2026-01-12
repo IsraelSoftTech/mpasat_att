@@ -8,7 +8,8 @@ import {
   FiCheckCircle,
   FiAlertCircle,
   FiEdit2,
-  FiX
+  FiX,
+  FiUser
 } from 'react-icons/fi'
 import firebaseService from './firebaseService'
 
@@ -75,19 +76,26 @@ export default function AdminSettings() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showError, setShowError] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [teacherPeriodCounts, setTeacherPeriodCounts] = useState({})
 
   useEffect(() => {
     fetchData()
+    loadGeneralPeriods()
   }, [])
 
   useEffect(() => {
     if (selectedClass) {
       loadTimetable()
     } else {
-      setPeriods(DEFAULT_PERIODS)
       setSchedule({})
     }
   }, [selectedClass])
+
+  useEffect(() => {
+    if (classes.length > 0 && teachers.length > 0) {
+      calculateTeacherPeriodCounts()
+    }
+  }, [classes, teachers])
 
   const fetchData = async () => {
     try {
@@ -131,6 +139,31 @@ export default function AdminSettings() {
     }
   }
 
+  const loadGeneralPeriods = async () => {
+    try {
+      const result = await firebaseService.get('settings/periods')
+      if (result.success && result.data && Array.isArray(result.data)) {
+        setPeriods(result.data)
+      } else {
+        setPeriods(DEFAULT_PERIODS)
+      }
+    } catch (error) {
+      console.error('Error loading periods:', error)
+      setPeriods(DEFAULT_PERIODS)
+    }
+  }
+
+  const saveGeneralPeriods = async (periodsToSave) => {
+    try {
+      const result = await firebaseService.set('settings/periods', periodsToSave)
+      if (!result.success) {
+        console.error('Failed to save periods:', result.error)
+      }
+    } catch (error) {
+      console.error('Error saving periods:', error)
+    }
+  }
+
   const loadTimetable = async () => {
     if (!selectedClass) return
 
@@ -139,12 +172,6 @@ export default function AdminSettings() {
       const result = await firebaseService.get(`timetables/${selectedClass.id}`)
 
       if (result.success && result.data) {
-        if (result.data.periods) {
-          setPeriods(result.data.periods)
-        } else {
-          setPeriods(DEFAULT_PERIODS)
-        }
-
         if (result.data.schedule) {
           setSchedule(result.data.schedule)
         } else {
@@ -162,7 +189,6 @@ export default function AdminSettings() {
           emptySchedule[day.toLowerCase()] = {}
         })
         setSchedule(emptySchedule)
-        setPeriods(DEFAULT_PERIODS)
       }
     } catch (error) {
       console.error('Error loading timetable:', error)
@@ -210,7 +236,6 @@ export default function AdminSettings() {
       const timetableData = {
         classId: selectedClass.id,
         className: selectedClass.className,
-        periods: periods,
         schedule: schedule,
         updatedAt: new Date().toISOString()
       }
@@ -224,6 +249,8 @@ export default function AdminSettings() {
           setShowSuccess(false)
           setErrorMessage('')
         }, 3000)
+        // Recalculate teacher period counts after saving
+        await calculateTeacherPeriodCounts()
       } else {
         setErrorMessage(result.error || 'Failed to save timetable')
         setShowError(true)
@@ -254,7 +281,7 @@ export default function AdminSettings() {
     setShowPeriodModal(true)
   }
 
-  const handleDeletePeriod = (index) => {
+  const handleDeletePeriod = async (index) => {
     if (periods.length <= 1) {
       setErrorMessage('At least one period is required')
       setShowError(true)
@@ -264,6 +291,7 @@ export default function AdminSettings() {
 
     const newPeriods = periods.filter((_, i) => i !== index)
     setPeriods(newPeriods)
+    await saveGeneralPeriods(newPeriods)
 
     // Remove schedule entries for deleted period
     setSchedule(prev => {
@@ -287,9 +315,72 @@ export default function AdminSettings() {
       })
       return newSchedule
     })
+
+    setShowSuccess(true)
+    setErrorMessage('Period deleted successfully!')
+    setTimeout(() => {
+      setShowSuccess(false)
+      setErrorMessage('')
+    }, 3000)
   }
 
-  const handleSavePeriod = () => {
+  const calculateTeacherPeriodCounts = async () => {
+    try {
+      // Get all timetables
+      const timetablesResult = await firebaseService.get('timetables')
+      
+      if (!timetablesResult.success || !timetablesResult.data) {
+        setTeacherPeriodCounts({})
+        return
+      }
+
+      const counts = {}
+      
+      // Initialize all teachers with 0 counts
+      teachers.forEach(teacher => {
+        counts[teacher.id] = {
+          teacherId: teacher.id,
+          teacherName: teacher.teacherName,
+          totalPeriods: 0
+        }
+      })
+
+      // Count periods for each teacher across all timetables
+      Object.keys(timetablesResult.data).forEach(classId => {
+        const timetable = timetablesResult.data[classId]
+        if (!timetable.schedule) return
+
+        DAYS.forEach(day => {
+          const dayKey = day.toLowerCase()
+          const daySchedule = timetable.schedule[dayKey]
+          if (!daySchedule) return
+
+          Object.keys(daySchedule).forEach(periodIndex => {
+            const cellData = daySchedule[periodIndex]
+            if (cellData && cellData.teacherId) {
+              const teacherId = cellData.teacherId
+              if (counts[teacherId]) {
+                counts[teacherId].totalPeriods += 1
+              } else {
+                // Teacher might have been deleted, but still in timetable
+                counts[teacherId] = {
+                  teacherId: teacherId,
+                  teacherName: 'Unknown',
+                  totalPeriods: 1
+                }
+              }
+            }
+          })
+        })
+      })
+
+      setTeacherPeriodCounts(counts)
+    } catch (error) {
+      console.error('Error calculating teacher period counts:', error)
+    }
+  }
+
+  const handleSavePeriod = async () => {
     if (!periodForm.startTime || !periodForm.endTime) {
       setErrorMessage('Please fill in both start and end times')
       setShowError(true)
@@ -297,25 +388,35 @@ export default function AdminSettings() {
       return
     }
 
+    let newPeriods
     if (editingPeriod !== null) {
       // Update existing period
-      const newPeriods = [...periods]
+      newPeriods = [...periods]
       newPeriods[editingPeriod] = {
         startTime: periodForm.startTime,
         endTime: periodForm.endTime
       }
-      setPeriods(newPeriods)
     } else {
       // Add new period
-      setPeriods([...periods, {
+      newPeriods = [...periods, {
         startTime: periodForm.startTime,
         endTime: periodForm.endTime
-      }])
+      }]
     }
+
+    setPeriods(newPeriods)
+    await saveGeneralPeriods(newPeriods)
 
     setShowPeriodModal(false)
     setEditingPeriod(null)
     setPeriodForm({ startTime: '', endTime: '' })
+    
+    setShowSuccess(true)
+    setErrorMessage('Periods saved successfully!')
+    setTimeout(() => {
+      setShowSuccess(false)
+      setErrorMessage('')
+    }, 3000)
   }
 
   const getTeacherName = (teacherId) => {
@@ -372,6 +473,84 @@ export default function AdminSettings() {
         </div>
       </div>
 
+      {/* Period Configuration - Always visible */}
+      <div className="periods-section">
+        <div className="section-header">
+          <h3>
+            <FiClock /> Period Times (General Settings)
+          </h3>
+          <button className="add-period-btn" onClick={handleAddPeriod}>
+            <FiPlus /> Add Period
+          </button>
+        </div>
+        <div className="periods-list">
+          {periods.map((period, index) => (
+            <div key={index} className="period-item">
+              <span className="period-number">Period {index + 1}</span>
+              <span className="period-time">
+                {convertTo12Hour(period.startTime)} - {convertTo12Hour(period.endTime)}
+              </span>
+              <div className="period-actions">
+                <button
+                  className="edit-period-btn"
+                  onClick={() => handleEditPeriod(index)}
+                  title="Edit"
+                >
+                  <FiEdit2 />
+                </button>
+                <button
+                  className="delete-period-btn"
+                  onClick={() => handleDeletePeriod(index)}
+                  title="Delete"
+                >
+                  <FiTrash2 />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Teacher Period Counts */}
+      <div className="teacher-periods-section">
+        <div className="section-header">
+          <h3>
+            <FiUser /> Teacher Period Assignments
+          </h3>
+        </div>
+        <div className="table-container">
+          <table className="teacher-periods-table">
+            <thead>
+              <tr>
+                <th>Teacher Name</th>
+                <th>Total Assigned Periods</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teachers.length === 0 ? (
+                <tr>
+                  <td colSpan="2" className="empty-state-cell">
+                    No teachers registered
+                  </td>
+                </tr>
+              ) : (
+                teachers.map(teacher => {
+                  const count = teacherPeriodCounts[teacher.id]?.totalPeriods || 0
+                  return (
+                    <tr key={teacher.id}>
+                      <td><strong>{teacher.teacherName}</strong></td>
+                      <td>
+                        <span className="period-count-badge">{count}</span>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {!selectedClass ? (
         <div className="empty-state">
           <p>Please select a class to configure its timetable</p>
@@ -382,47 +561,10 @@ export default function AdminSettings() {
         </div>
       ) : (
         <>
-          {/* Period Configuration */}
-          <div className="periods-section">
-            <div className="section-header">
-              <h3>
-                <FiClock /> Period Times
-              </h3>
-              <button className="add-period-btn" onClick={handleAddPeriod}>
-                <FiPlus /> Add Period
-              </button>
-            </div>
-            <div className="periods-list">
-              {periods.map((period, index) => (
-                <div key={index} className="period-item">
-                  <span className="period-number">Period {index + 1}</span>
-                  <span className="period-time">
-                    {convertTo12Hour(period.startTime)} - {convertTo12Hour(period.endTime)}
-                  </span>
-                  <div className="period-actions">
-                    <button
-                      className="edit-period-btn"
-                      onClick={() => handleEditPeriod(index)}
-                      title="Edit"
-                    >
-                      <FiEdit2 />
-                    </button>
-                    <button
-                      className="delete-period-btn"
-                      onClick={() => handleDeletePeriod(index)}
-                      title="Delete"
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Timetable Table */}
           <div className="timetable-section">
-            <h3>Weekly Schedule</h3>
+            <h3>Weekly Schedule - {selectedClass.className}</h3>
             <div className="table-container">
               <table className="timetable-table">
                 <thead>

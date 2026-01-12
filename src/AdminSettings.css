@@ -216,6 +216,67 @@
   background: #fecaca;
 }
 
+/* Teacher Periods Section */
+.teacher-periods-section {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.teacher-periods-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.teacher-periods-table thead {
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.teacher-periods-table th {
+  padding: 16px 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.teacher-periods-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.teacher-periods-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.teacher-periods-table td {
+  padding: 16px 12px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.empty-state-cell {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px !important;
+}
+
+.period-count-badge {
+  display: inline-block;
+  background: #2563eb;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 40px;
+  text-align: center;
+}
+
 /* Timetable Section */
 .timetable-section {
   background: white;
