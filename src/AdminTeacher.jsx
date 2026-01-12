@@ -14,7 +14,6 @@ import firebaseService from './firebaseService'
 
 export default function AdminTeacher() {
   const [teachers, setTeachers] = useState([])
-  const [classes, setClasses] = useState([])
   const [subjects, setSubjects] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -26,20 +25,16 @@ export default function AdminTeacher() {
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [subjectSearch, setSubjectSearch] = useState('')
-  const [classSearch, setClassSearch] = useState('')
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
-  const [showClassDropdown, setShowClassDropdown] = useState(false)
   const [formData, setFormData] = useState({
     teacherName: '',
     contact: '',
-    selectedSubjects: [],
-    selectedClasses: []
+    selectedSubjects: []
   })
 
   // Fetch data on component mount
   useEffect(() => {
     fetchTeachers()
-    fetchClasses()
     fetchSubjects()
   }, [])
 
@@ -48,15 +43,14 @@ export default function AdminTeacher() {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.search-dropdown')) {
         setShowSubjectDropdown(false)
-        setShowClassDropdown(false)
       }
     }
 
-    if (showSubjectDropdown || showClassDropdown) {
+    if (showSubjectDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showSubjectDropdown, showClassDropdown])
+  }, [showSubjectDropdown])
 
   const fetchTeachers = async () => {
     try {
@@ -85,21 +79,6 @@ export default function AdminTeacher() {
       setTimeout(() => setShowError(false), 3000)
     } finally {
       setFetching(false)
-    }
-  }
-
-  const fetchClasses = async () => {
-    try {
-      const result = await firebaseService.get('classes')
-      if (result.success && result.data) {
-        const classesArray = Object.keys(result.data).map(key => ({
-          id: key,
-          ...result.data[key]
-        }))
-        setClasses(classesArray)
-      }
-    } catch (error) {
-      console.error('Error fetching classes:', error)
     }
   }
 
@@ -139,30 +118,10 @@ export default function AdminTeacher() {
     // Keep dropdown open for multiple selections
   }
 
-  const handleClassToggle = (classId) => {
-    setFormData(prev => {
-      const isSelected = prev.selectedClasses.includes(classId)
-      return {
-        ...prev,
-        selectedClasses: isSelected
-          ? prev.selectedClasses.filter(id => id !== classId)
-          : [...prev.selectedClasses, classId]
-      }
-    })
-    // Keep dropdown open for multiple selections
-  }
-
   const removeSubject = (subjectId) => {
     setFormData(prev => ({
       ...prev,
       selectedSubjects: prev.selectedSubjects.filter(id => id !== subjectId)
-    }))
-  }
-
-  const removeClass = (classId) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedClasses: prev.selectedClasses.filter(id => id !== classId)
     }))
   }
 
@@ -171,18 +130,9 @@ export default function AdminTeacher() {
     return subject ? subject.subjectName : 'Unknown'
   }
 
-  const getClassName = (classId) => {
-    const classItem = classes.find(c => c.id === classId)
-    return classItem ? classItem.className : 'Unknown'
-  }
-
   const filteredSubjects = subjects.filter(subject =>
     subject.subjectName.toLowerCase().includes(subjectSearch.toLowerCase()) ||
     subject.subjectCode.toLowerCase().includes(subjectSearch.toLowerCase())
-  )
-
-  const filteredClasses = classes.filter(classItem =>
-    classItem.className.toLowerCase().includes(classSearch.toLowerCase())
   )
 
   const handleSubmit = async (e) => {
@@ -197,13 +147,6 @@ export default function AdminTeacher() {
 
     if (formData.selectedSubjects.length === 0) {
       setErrorMessage('Please select at least one subject')
-      setShowError(true)
-      setTimeout(() => setShowError(false), 3000)
-      return
-    }
-
-    if (formData.selectedClasses.length === 0) {
-      setErrorMessage('Please select at least one class')
       setShowError(true)
       setTimeout(() => setShowError(false), 3000)
       return
@@ -267,8 +210,7 @@ export default function AdminTeacher() {
     setFormData({
       teacherName: teacherItem.teacherName,
       contact: teacherItem.contact,
-      selectedSubjects: teacherItem.selectedSubjects || [],
-      selectedClasses: teacherItem.selectedClasses || []
+      selectedSubjects: teacherItem.selectedSubjects || []
     })
     setShowModal(true)
   }
@@ -320,13 +262,10 @@ export default function AdminTeacher() {
     setFormData({
       teacherName: '',
       contact: '',
-      selectedSubjects: [],
-      selectedClasses: []
+      selectedSubjects: []
     })
     setSubjectSearch('')
-    setClassSearch('')
     setShowSubjectDropdown(false)
-    setShowClassDropdown(false)
   }
 
   const handleCreateNew = () => {
@@ -334,13 +273,10 @@ export default function AdminTeacher() {
     setFormData({
       teacherName: '',
       contact: '',
-      selectedSubjects: [],
-      selectedClasses: []
+      selectedSubjects: []
     })
     setSubjectSearch('')
-    setClassSearch('')
     setShowSubjectDropdown(false)
-    setShowClassDropdown(false)
     setShowModal(true)
   }
 
@@ -391,7 +327,6 @@ export default function AdminTeacher() {
                 <th>Teacher Name</th>
                 <th>Contact</th>
                 <th>Subjects</th>
-                <th>Classes</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -409,18 +344,6 @@ export default function AdminTeacher() {
                       ))}
                       {teacher.selectedSubjects?.length > 2 && (
                         <span className="tag tag-more">+{teacher.selectedSubjects.length - 2}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="tags-container">
-                      {teacher.selectedClasses?.slice(0, 2).map(classId => (
-                        <span key={classId} className="tag tag-class">
-                          {getClassName(classId)}
-                        </span>
-                      ))}
-                      {teacher.selectedClasses?.length > 2 && (
-                        <span className="tag tag-more">+{teacher.selectedClasses.length - 2}</span>
                       )}
                     </div>
                   </td>
@@ -535,62 +458,6 @@ export default function AdminTeacher() {
                               />
                               <span>
                                 <strong>{subject.subjectName}</strong> ({subject.subjectCode})
-                              </span>
-                            </label>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Class(es) *</label>
-                <div className="multi-select-container">
-                  <div className="selected-items">
-                    {formData.selectedClasses.map(classId => {
-                      const classItem = classes.find(c => c.id === classId)
-                      return classItem ? (
-                        <span key={classId} className="selected-tag">
-                          {classItem.className}
-                          <button
-                            type="button"
-                            onClick={() => removeClass(classId)}
-                            className="remove-tag"
-                          >
-                            <FiX />
-                          </button>
-                        </span>
-                      ) : null
-                    })}
-                  </div>
-                  <div className="search-dropdown">
-                    <div className="search-input-wrapper">
-                      <FiSearch className="search-icon" />
-                      <input
-                        type="text"
-                        placeholder="Search and select classes..."
-                        value={classSearch}
-                        onChange={(e) => setClassSearch(e.target.value)}
-                        onFocus={() => setShowClassDropdown(true)}
-                        className="search-input"
-                      />
-                    </div>
-                    {showClassDropdown && (
-                      <div className="dropdown-list">
-                        {filteredClasses.length === 0 ? (
-                          <div className="dropdown-empty">No classes found</div>
-                        ) : (
-                          filteredClasses.map(classItem => (
-                            <label key={classItem.id} className="checkbox-item">
-                              <input
-                                type="checkbox"
-                                checked={formData.selectedClasses.includes(classItem.id)}
-                                onChange={() => handleClassToggle(classItem.id)}
-                              />
-                              <span>
-                                <strong>{classItem.className}</strong> - {classItem.section}
                               </span>
                             </label>
                           ))
